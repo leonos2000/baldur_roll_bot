@@ -12,6 +12,7 @@ class Baldur:
 
     rollCounter = 0
     numbers = {}
+    rollin = True
 
     def __init__(self, bestRoll = 0):
         self.bestRoll = bestRoll
@@ -69,40 +70,15 @@ class Wnd:
     def getPosize(self):
         return (self.x, self.y, self.w, self.h)
 wnd = Wnd()
-bg = Baldur(90)
-
-loop = True
+bg = Baldur()
 
 def stop():
-
-    numbers = sorted(bg.numbers.items(), key=lambda x: x[1])
-    height = []
-    left = []
-    labels = []
-    
-    i = 0
-    for num in numbers:
-        height.append(num[1])
-        labels.append(num[0])
-        left.append(i)
-        i += 1
-
-    plt.bar(left, height, tick_label=labels, width=0.8, color = ['red'])
-
-    plt.xlabel('Liczba')
-    plt.ylabel('Ilosc wystąpien')
-    plt.title('test')
-
-    loop = False
-    plt.show()
-
-    print(numbers)
-
+    bg.rollin = False
 
 keyboard.add_hotkey('q', lambda: stop())
 keyboard.wait('a')
 
-while loop:
+while bg.rollin:
     currRoll = bg.roll(wnd.getPosize())
 
     print("Current roll: ", currRoll, ", best roll: ", bg.bestRoll)
@@ -111,3 +87,24 @@ while loop:
         bg.save(wnd.getPosize())
         bg.bestRoll = currRoll
         print("******************* NEW BEST ROLL! : ", bg.bestRoll, " **********************")
+
+
+numbers = sorted(bg.numbers.items(), key=lambda x: int(x[0]))
+height = []
+left = []
+labels = []
+
+i = 0
+for num in numbers:
+    height.append(num[1])
+    labels.append(num[0])
+    left.append(i)
+    i += 1
+
+plt.bar(left, height, tick_label=labels, width=0.8, color = ['red'])
+
+plt.xlabel('Wylosowana liczba')
+plt.ylabel('Ilość wystąpien')
+plt.title('Wykonano ' + str(bg.rollCounter) + ' losowań')
+
+plt.show()
