@@ -5,33 +5,61 @@ import keyboard
 import pytesseract
 import pyscreenshot as sc
 import matplotlib.pyplot as plt
+import math
 
 from pynput.mouse import Button, Controller
 
 class Baldur:
-
     rollCounter = 0
     numbers = {}
     rollin = True
 
-    def __init__(self, bestRoll = 0):
+    def __init__(self, bgVersion = 'BG2', bestRoll = 0):
         self.bestRoll = bestRoll
+        if 'BG2' in bgVersion:
+            self.rollButtonOffsetX = 440
+            self.rollButtonOffsetY = 695
+
+            self.scOffsetX = 360
+            self.scOffsetY = 615
+
+            self.saveButtonOffsetX = 140
+            self.saveButtonOffsetY = 695
+
+        elif 'SOD' in bgVersion:
+            self.rollButtonScaleX = 31
+            self.rollButtonScaleY = 67
+
+            self.scScaleX1 = 38
+            self.scScaleY1 = 58
+            
+            self.scScaleX2 = 40
+            self.scScaleY2 = 61
+
+            self.saveButtonScaleX = 30
+            self.saveButtonScaleY = 72
+
+    def scalePosX(self, wndPosize, scale):
+        return round(wndPosize[0] + (wndPosize[2] * scale / 100))
+
+    def scalePosY(self, wndPosize, scale):
+        return round(wndPosize[1] + (wndPosize[3] * scale / 100))
 
     def roll(self, wndPosize):
-        win32api.SetCursorPos((wndPosize[0] + 440, wndPosize[1] + 695))
+        win32api.SetCursorPos((self.scalePosX(wndPosize, self.rollButtonScaleX), self.scalePosY(wndPosize, self.rollButtonScaleY)))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN | win32con.MOUSEEVENTF_ABSOLUTE, 0, 0)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP | win32con.MOUSEEVENTF_ABSOLUTE, 0, 0)
         time.sleep(0.1)
 
         self.rollCounter += 1
 
-        x = wndPosize[0] + 360
-        y = wndPosize[1] + 615
-        img = sc.grab(bbox=(x, y, x + 80, y + 20), backend="mss", childprocess=False)  # X1,Y1,X2,Y2
+        x1 = self.scalePosX(wndPosize, self.scScaleX1)
+        y1 = self.scalePosY(wndPosize, self.scScaleY1)
+        x2 = self.scalePosX(wndPosize, self.scScaleX2)
+        y2 = self.scalePosY(wndPosize, self.scScaleY2)
+        img = sc.grab(bbox=(x1, y1, x2, y2), backend="mss", childprocess=False)  # X1,Y1,X2,Y2
 
-        img.save('box.png')
-
-        custom_config = r'-c tessedit_char_whitelist=0123456789 --oem 0'
+        custom_config = r'-c tessedit_char_whitelist=0123456789 --oem 0 --psm 7'
 
         roll = pytesseract.image_to_string(img, config=custom_config)
 
@@ -44,7 +72,7 @@ class Baldur:
 
     def save(self, wndPosize):
         time.sleep(1)
-        win32api.SetCursorPos((wndPosize[0] + 140, wndPosize[1] + 695))
+        win32api.SetCursorPos((self.scalePosX(wndPosize, self.saveButtonScaleX), self.scalePosY(wndPosize, self.saveButtonScaleY)))
         time.sleep(0.2)
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN | win32con.MOUSEEVENTF_ABSOLUTE, 0, 0)
         time.sleep(0.5)
@@ -56,10 +84,11 @@ class Wnd:
     def getWindowCallback(self, hwnd, extra):
         if "Baldur" in win32gui.GetWindowText(hwnd):
             rect = win32gui.GetWindowRect(hwnd)
-            self.x = rect[0]
-            self.y = rect[1]
-            self.w = rect[2] - self.x
-            self.h = rect[3] - self.y
+            if rect[0] > 0:
+                self.x = rect[0]
+                self.y = rect[1]
+                self.w = rect[2] - self.x
+                self.h = rect[3] - self.y
 
     def __init__(self):
         self.refresh()
@@ -69,8 +98,9 @@ class Wnd:
 
     def getPosize(self):
         return (self.x, self.y, self.w, self.h)
+        a
 wnd = Wnd()
-bg = Baldur()
+bg = Baldur('SOD', 0)
 
 def stop():
     bg.rollin = False
@@ -88,7 +118,6 @@ while bg.rollin:
         bg.bestRoll = currRoll
         print("******************* NEW BEST ROLL! : ", bg.bestRoll, " **********************")
 
-
 numbers = sorted(bg.numbers.items(), key=lambda x: int(x[0]))
 height = []
 left = []
@@ -103,8 +132,8 @@ for num in numbers:
 
 plt.bar(left, height, tick_label=labels, width=0.8, color = ['red'])
 
-plt.xlabel('Wylosowana liczba')
-plt.ylabel('Ilość wystąpien')
-plt.title('Wykonano ' + str(bg.rollCounter) + ' losowań')
+plt.xlabel('Rolled number')
+plt.ylabel('Occurrences')
+plt.title('Made ' + str(bg.rollCounter) + ' rolls')
 
 plt.show()
