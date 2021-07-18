@@ -1,13 +1,10 @@
 import win32api, win32con, win32gui
 import time
-import os
+import sys
 import keyboard
 import pytesseract
 import pyscreenshot as sc
 import matplotlib.pyplot as plt
-import math
-
-from pynput.mouse import Button, Controller
 
 class Baldur:
     rollCounter = 0
@@ -17,16 +14,19 @@ class Baldur:
     def __init__(self, bgVersion = 'BG2', bestRoll = 0):
         self.bestRoll = bestRoll
         if 'BG2' in bgVersion:
-            self.rollButtonOffsetX = 440
-            self.rollButtonOffsetY = 695
+            self.rollButtonScaleX = 44
+            self.rollButtonScaleY = 85
 
-            self.scOffsetX = 360
-            self.scOffsetY = 615
+            self.scScaleX1 = 35
+            self.scScaleY1 = 75
+            
+            self.scScaleX2 = 43
+            self.scScaleY2 = 80
 
-            self.saveButtonOffsetX = 140
-            self.saveButtonOffsetY = 695
+            self.saveButtonScaleX = 14
+            self.saveButtonScaleY = 85
 
-        elif 'SOD' in bgVersion:
+        elif 'SOD' or 'BG1' in bgVersion:
             self.rollButtonScaleX = 31
             self.rollButtonScaleY = 67
 
@@ -57,7 +57,7 @@ class Baldur:
         y1 = self.scalePosY(wndPosize, self.scScaleY1)
         x2 = self.scalePosX(wndPosize, self.scScaleX2)
         y2 = self.scalePosY(wndPosize, self.scScaleY2)
-        img = sc.grab(bbox=(x1, y1, x2, y2), backend="mss", childprocess=False)  # X1,Y1,X2,Y2
+        img = sc.grab(bbox=(x1, y1, x2, y2), backend='mss', childprocess=False)  # X1,Y1,X2,Y2
 
         custom_config = r'-c tessedit_char_whitelist=0123456789 --oem 0 --psm 7'
 
@@ -68,7 +68,12 @@ class Baldur:
         else:
             self.numbers[roll] += 1
 
-        return int(roll)
+        try:
+            rolledNumber = int(roll)
+        except:
+            rolledNumber = 0
+
+        return rolledNumber
 
     def save(self, wndPosize):
         time.sleep(1)
@@ -82,7 +87,7 @@ class Baldur:
 
 class Wnd:
     def getWindowCallback(self, hwnd, extra):
-        if "Baldur" in win32gui.GetWindowText(hwnd):
+        if 'Baldur' in win32gui.GetWindowText(hwnd):
             rect = win32gui.GetWindowRect(hwnd)
             if rect[0] > 0:
                 self.x = rect[0]
@@ -98,42 +103,54 @@ class Wnd:
 
     def getPosize(self):
         return (self.x, self.y, self.w, self.h)
-        a
-wnd = Wnd()
-bg = Baldur('SOD', 0)
 
-def stop():
-    bg.rollin = False
+def main():
+    if len(sys.argv) != 2:
+        print('Usage: python baldur.py bg_version')
+        print('bg_version: SOD / BG1 / BG2')
+        return
 
-keyboard.add_hotkey('q', lambda: stop())
-keyboard.wait('a')
+    print(f'Baldur\'s Gate version: {sys.argv[1]}')
+    print('Click A to start, Q to stop and exit')
 
-while bg.rollin:
-    currRoll = bg.roll(wnd.getPosize())
+    wnd = Wnd()
+    bg = Baldur(sys.argv[1], 0)
 
-    print("Current roll: ", currRoll, ", best roll: ", bg.bestRoll)
+    def stop():
+        bg.rollin = False
 
-    if currRoll > bg.bestRoll:
-        bg.save(wnd.getPosize())
-        bg.bestRoll = currRoll
-        print("******************* NEW BEST ROLL! : ", bg.bestRoll, " **********************")
+    keyboard.add_hotkey('q', lambda: stop())
+    keyboard.wait('a')
 
-numbers = sorted(bg.numbers.items(), key=lambda x: int(x[0]))
-height = []
-left = []
-labels = []
+    while bg.rollin:
+        currRoll = bg.roll(wnd.getPosize())
 
-i = 0
-for num in numbers:
-    height.append(num[1])
-    labels.append(num[0])
-    left.append(i)
-    i += 1
+        print(f'Current roll: {currRoll}, best roll: {bg.bestRoll}')
 
-plt.bar(left, height, tick_label=labels, width=0.8, color = ['red'])
+        if currRoll > bg.bestRoll:
+            bg.save(wnd.getPosize())
+            bg.bestRoll = currRoll
+            print(f'******************* NEW BEST ROLL!: {bg.bestRoll} **********************')
 
-plt.xlabel('Rolled number')
-plt.ylabel('Occurrences')
-plt.title('Made ' + str(bg.rollCounter) + ' rolls')
+    numbers = sorted(bg.numbers.items(), key=lambda x: int(x[0]))
+    height = []
+    left = []
+    labels = []
 
-plt.show()
+    i = 0
+    for num in numbers:
+        height.append(num[1])
+        labels.append(num[0])
+        left.append(i)
+        i += 1
+
+    plt.bar(left, height, tick_label=labels, width=0.8, color = ['red'])
+
+    plt.xlabel('Rolled number')
+    plt.ylabel('Occurrences')
+    plt.title('Made ' + str(bg.rollCounter) + ' rolls')
+
+    plt.show()
+
+if __name__ == '__main__':
+    main()
